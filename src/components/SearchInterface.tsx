@@ -66,7 +66,7 @@ export const SearchInterface: React.FC<SearchInterfaceProps> = ({ onSearch }) =>
                   placeholder="Where do you want to go?"
                   value={destination}
                   onChange={(e) => setDestination(e.target.value)}
-                  className="bg-white/5 border-white/20 text-white placeholder-white/60 focus:border-blue-400"
+                  className="bg-white/5 border-white/20 text-white placeholder-white/90 focus:border-blue-400"
                   required
                 />
               </div>
