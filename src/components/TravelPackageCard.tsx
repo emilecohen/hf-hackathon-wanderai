@@ -11,7 +11,9 @@ import {
   Car,
   Coffee,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  ExternalLink,
+  Map
 } from 'lucide-react';
 
 interface TravelPackage {
@@ -51,8 +53,24 @@ export const TravelPackageCard: React.FC<TravelPackageCardProps> = ({
   package: pkg 
 }) => {
   const [expanded, setExpanded] = useState(false);
+  const [showMap, setShowMap] = useState(false);
 
   const total = Object.values(pkg.budgetBreakdown).reduce((sum, val) => sum + val, 0);
+
+  const handleBookFlight = () => {
+    // In a real app, this would redirect to a flight booking service
+    window.open(`https://www.google.com/flights#search;f=${pkg.flights.outbound.split(' → ')[0]};t=${pkg.flights.outbound.split(' → ')[1]};d=2024-12-20;r=2024-12-30`, '_blank');
+  };
+
+  const handleBookHotel = () => {
+    // In a real app, this would redirect to a hotel booking service
+    window.open(`https://www.booking.com/searchresults.html?ss=${pkg.hotel.location}&checkin=2024-12-20&checkout=2024-12-30`, '_blank');
+  };
+
+  const handleBookActivity = (activity: string) => {
+    // In a real app, this would redirect to an activity booking service
+    window.open(`https://www.viator.com/searchResults/all?text=${encodeURIComponent(activity)}`, '_blank');
+  };
 
   return (
     <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl overflow-hidden hover:bg-white/15 transition-all duration-300 group">
@@ -67,11 +85,39 @@ export const TravelPackageCard: React.FC<TravelPackageCardProps> = ({
         <div className="absolute top-4 right-4 bg-green-500 text-white px-2 py-1 rounded-full text-xs font-semibold">
           {pkg.confidence}% match
         </div>
+        <div className="absolute top-4 left-4">
+          <button
+            onClick={() => setShowMap(!showMap)}
+            className="bg-white/20 backdrop-blur-sm text-white p-2 rounded-full hover:bg-white/30 transition-colors"
+            title="View on map"
+          >
+            <Map className="w-4 h-4" />
+          </button>
+        </div>
         <div className="absolute bottom-4 left-4 text-white">
           <h3 className="text-xl font-bold">{pkg.title}</h3>
           <p className="text-white/80 text-sm">{pkg.duration}</p>
         </div>
       </div>
+
+      {/* Map View */}
+      {showMap && (
+        <div className="h-64 bg-gray-800 relative">
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-center text-white/80">
+              <Map className="w-12 h-12 mx-auto mb-2 opacity-50" />
+              <p className="text-sm">Interactive map coming soon</p>
+              <p className="text-xs text-white/60">Location: {pkg.hotel.location}</p>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowMap(false)}
+            className="absolute top-2 right-2 bg-black/20 text-white p-1 rounded-full hover:bg-black/40 transition-colors"
+          >
+            <ChevronUp className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* Content */}
       <div className="p-6">
@@ -87,19 +133,37 @@ export const TravelPackageCard: React.FC<TravelPackageCardProps> = ({
           </div>
         </div>
 
-        {/* Quick Info */}
+        {/* Quick Info with Booking Links */}
         <div className="space-y-3 mb-4">
-          <div className="flex items-center space-x-2 text-white/80 text-sm">
-            <Plane className="w-4 h-4" />
-            <span>{pkg.flights.outbound} • {pkg.flights.airline}</span>
-          </div>
-          <div className="flex items-center space-x-2 text-white/80 text-sm">
-            <MapPin className="w-4 h-4" />
-            <span>{pkg.hotel.name} • {pkg.hotel.location}</span>
-            <div className="flex items-center ml-auto">
-              <Star className="w-3 h-3 text-yellow-400 fill-current" />
-              <span className="text-xs ml-1">{pkg.hotel.rating}</span>
+          <div className="flex items-center justify-between text-white/80 text-sm">
+            <div className="flex items-center space-x-2">
+              <Plane className="w-4 h-4" />
+              <span>{pkg.flights.outbound} • {pkg.flights.airline}</span>
             </div>
+            <button
+              onClick={handleBookFlight}
+              className="flex items-center space-x-1 text-blue-400 hover:text-blue-300 transition-colors"
+            >
+              <ExternalLink className="w-3 h-3" />
+              <span className="text-xs">Book</span>
+            </button>
+          </div>
+          <div className="flex items-center justify-between text-white/80 text-sm">
+            <div className="flex items-center space-x-2">
+              <MapPin className="w-4 h-4" />
+              <span>{pkg.hotel.name} • {pkg.hotel.location}</span>
+              <div className="flex items-center ml-2">
+                <Star className="w-3 h-3 text-yellow-400 fill-current" />
+                <span className="text-xs ml-1">{pkg.hotel.rating}</span>
+              </div>
+            </div>
+            <button
+              onClick={handleBookHotel}
+              className="flex items-center space-x-1 text-blue-400 hover:text-blue-300 transition-colors"
+            >
+              <ExternalLink className="w-3 h-3" />
+              <span className="text-xs">Book</span>
+            </button>
           </div>
         </div>
 
@@ -128,14 +192,23 @@ export const TravelPackageCard: React.FC<TravelPackageCardProps> = ({
               </div>
             </div>
 
-            {/* Activities */}
+            {/* Activities with Booking Links */}
             <div>
               <h4 className="text-white font-semibold mb-2">Included Activities</h4>
-              <div className="space-y-1">
+              <div className="space-y-2">
                 {pkg.activities.map((activity, index) => (
-                  <div key={index} className="text-sm text-white/70 flex items-center">
-                    <div className="w-1.5 h-1.5 bg-blue-400 rounded-full mr-2" />
-                    {activity}
+                  <div key={index} className="flex items-center justify-between text-sm">
+                    <div className="flex items-center text-white/70">
+                      <div className="w-1.5 h-1.5 bg-blue-400 rounded-full mr-2" />
+                      {activity}
+                    </div>
+                    <button
+                      onClick={() => handleBookActivity(activity)}
+                      className="flex items-center space-x-1 text-blue-400 hover:text-blue-300 transition-colors"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      <span className="text-xs">Book</span>
+                    </button>
                   </div>
                 ))}
               </div>

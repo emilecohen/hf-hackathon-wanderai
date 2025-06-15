@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Mic, Send, Sparkles, MapPin, Calendar, Users, DollarSign } from 'lucide-react';
 import { SearchData } from '@/pages/Index';
@@ -148,7 +147,10 @@ export const SearchInterface: React.FC<SearchInterfaceProps> = ({ onSearch }) =>
             query: `${updatedParams.destination} from ${updatedParams.origin}`,
             destination: updatedParams.destination || 'Tokyo',
             origin: updatedParams.origin || 'New York',
-            dates: updatedParams.dates || { start: '2024-12-20', end: '2024-12-30' },
+            dates: {
+              start: updatedParams.dates?.start || '2024-12-20',
+              end: updatedParams.dates?.end || '2024-12-30'
+            },
             budget: updatedParams.budget || 3000,
             travelers: updatedParams.travelers || 2
           };
