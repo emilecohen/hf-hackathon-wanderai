@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -84,11 +85,23 @@ export default {
 					to: {
 						height: '0'
 					}
+				},
+				'slow-zoom': {
+					'0%': {
+						transform: 'scale(1.05)'
+					},
+					'100%': {
+						transform: 'scale(1.1)'
+					}
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'slow-zoom': 'slow-zoom 10s ease-in-out infinite alternate'
+			},
+			transitionDuration: {
+				'2000': '2000ms'
 			}
 		}
 	},
