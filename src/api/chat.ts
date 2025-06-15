@@ -1,6 +1,6 @@
 
-import { openai } from 'ai';
 import { streamText } from 'ai';
+import { openai } from '@ai-sdk/openai';
 
 const SYSTEM_PROMPT = `You are WanderAI, a friendly and knowledgeable travel assistant. Your goal is to help users plan their perfect trip through natural conversation.
 
@@ -25,10 +25,10 @@ export async function POST(req: Request) {
   const { messages } = await req.json();
 
   const result = await streamText({
-    model: openai('gpt-3.5-turbo'),
+    model: openai('gpt-4-turbo'),
     system: SYSTEM_PROMPT,
     messages,
   });
 
-  return result.toAIStreamResponse();
+  return result.toDataStreamResponse();
 }
