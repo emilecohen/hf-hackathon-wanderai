@@ -1,16 +1,11 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Mic, Send, Sparkles, MapPin, Calendar, Users, DollarSign } from 'lucide-react';
 import { SearchData } from '@/pages/Index';
+import { useChat } from 'ai/react';
 
 interface SearchInterfaceProps {
   onSearch: (data: SearchData) => void;
-}
-
-interface ChatMessage {
-  id: string;
-  type: 'ai' | 'user';
-  content: string;
-  timestamp: Date;
 }
 
 interface TravelParams {
@@ -22,155 +17,120 @@ interface TravelParams {
   preferences?: string[];
 }
 
-const CONVERSATION_FLOW = [
-  {
-    key: 'greeting',
-    message: "Hi! I'm your AI travel assistant ✨ What's inspiring your next adventure?",
-    expectsInput: true
-  },
-  {
-    key: 'origin',
-    message: "That sounds amazing! Where are you planning to travel from?",
-    expectsInput: true
-  },
-  {
-    key: 'dates',
-    message: "Perfect! Do you have specific dates in mind, or are you flexible with timing?",
-    expectsInput: true
-  },
-  {
-    key: 'travelers',
-    message: "Great! How many travelers will be joining this adventure?",
-    expectsInput: true,
-    suggestions: ['Just me', '2 people', '3-4 people', 'Family (5+)', 'Large group']
-  },
-  {
-    key: 'budget',
-    message: "What's your ideal budget range for this trip?",
-    expectsInput: true,
-    suggestions: ['Under $1,000', '$1,000-$3,000', '$3,000-$5,000', 'Above $5,000', 'Money is no object']
-  }
-];
+const SYSTEM_PROMPT = `You are WanderAI, a friendly travel assistant. Your goal is to collect travel information through natural conversation.
+
+Follow this flow:
+1. Ask about travel destination/inspiration
+2. Ask about origin location
+3. Ask about travel dates
+4. Ask about number of travelers
+5. Ask about budget
+
+Keep responses conversational and friendly. When you have all information, respond with "SEARCH_READY" followed by a summary.
+
+Provide helpful suggestions and be encouraging about their travel plans.`;
 
 export const SearchInterface: React.FC<SearchInterfaceProps> = ({ onSearch }) => {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [currentInput, setCurrentInput] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
-  const [conversationStep, setConversationStep] = useState(0);
   const [travelParams, setTravelParams] = useState<TravelParams>({});
   const [isListening, setIsListening] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    // Start with greeting
-    setTimeout(() => {
-      addAIMessage(CONVERSATION_FLOW[0].message);
-    }, 1000);
-  }, []);
+  const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
+    api: '/api/chat',
+    initialMessages: [
+      {
+        id: '1',
+        role: 'assistant',
+        content: "Hi! I'm your AI travel assistant ✨ What's inspiring your next adventure?",
+      },
+    ],
+    onFinish: (message) => {
+      // Parse the AI response to extract travel parameters
+      parseAIResponse(message.content);
+      
+      // Check if ready to search
+      if (message.content.includes('SEARCH_READY')) {
+        setTimeout(() => {
+          const searchData: SearchData = {
+            query: `${travelParams.destination} from ${travelParams.origin}`,
+            destination: travelParams.destination || 'Tokyo',
+            origin: travelParams.origin || 'New York',
+            dates: {
+              start: travelParams.dates?.start || '2024-12-20',
+              end: travelParams.dates?.end || '2024-12-30'
+            },
+            budget: travelParams.budget || 3000,
+            travelers: travelParams.travelers || 2
+          };
+          onSearch(searchData);
+        }, 2000);
+      }
+    },
+  });
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const addAIMessage = (content: string) => {
-    setIsTyping(true);
-    setTimeout(() => {
-      const newMessage: ChatMessage = {
-        id: Date.now().toString(),
-        type: 'ai',
-        content,
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, newMessage]);
-      setIsTyping(false);
-    }, 1000);
-  };
-
-  const addUserMessage = (content: string) => {
-    const newMessage: ChatMessage = {
-      id: Date.now().toString(),
-      type: 'user',
-      content,
-      timestamp: new Date()
-    };
-    setMessages(prev => [...prev, newMessage]);
-  };
-
-  const parseUserInput = (input: string, step: number) => {
+  const parseAIResponse = (content: string) => {
+    // Simple parsing logic - in a real app, you'd use more sophisticated NLP
     const newParams = { ...travelParams };
     
-    switch (step) {
-      case 0: // Initial destination/inspiration
-        newParams.destination = input;
-        break;
-      case 1: // Origin
-        newParams.origin = input;
-        break;
-      case 2: // Dates
-        // Simple date parsing - could be enhanced
-        newParams.dates = { start: '2024-12-20', end: '2024-12-30' };
-        break;
-      case 3: // Travelers
-        const travelerNum = parseInt(input) || (input.toLowerCase().includes('just') ? 1 : 2);
-        newParams.travelers = travelerNum;
-        break;
-      case 4: // Budget
-        const budgetMatch = input.match(/\$?(\d+(?:,\d+)?)/);
-        newParams.budget = budgetMatch ? parseInt(budgetMatch[1].replace(',', '')) : 3000;
-        break;
+    // This is a simplified example - you'd implement more robust parsing
+    if (content.toLowerCase().includes('destination') || content.toLowerCase().includes('where')) {
+      // AI is asking about destination
+    }
+    
+    setTravelParams(newParams);
+  };
+
+  const parseUserInput = (input: string) => {
+    const newParams = { ...travelParams };
+    const lowerInput = input.toLowerCase();
+    
+    // Simple keyword-based parsing
+    if (lowerInput.includes('tokyo') || lowerInput.includes('japan')) {
+      newParams.destination = 'Tokyo, Japan';
+    }
+    if (lowerInput.includes('new york') || lowerInput.includes('nyc')) {
+      newParams.origin = 'New York';
+    }
+    if (lowerInput.match(/\$\d+/)) {
+      const budgetMatch = input.match(/\$(\d+(?:,\d+)?)/);
+      if (budgetMatch) {
+        newParams.budget = parseInt(budgetMatch[1].replace(',', ''));
+      }
+    }
+    if (lowerInput.includes('person') || lowerInput.includes('people') || lowerInput.includes('traveler')) {
+      const numberMatch = input.match(/(\d+)/);
+      if (numberMatch) {
+        newParams.travelers = parseInt(numberMatch[1]);
+      }
     }
     
     setTravelParams(newParams);
     return newParams;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!currentInput.trim()) return;
-
-    addUserMessage(currentInput);
-    const updatedParams = parseUserInput(currentInput, conversationStep);
-    
-    const nextStep = conversationStep + 1;
-    
-    if (nextStep < CONVERSATION_FLOW.length) {
-      setConversationStep(nextStep);
-      setTimeout(() => {
-        addAIMessage(CONVERSATION_FLOW[nextStep].message);
-      }, 1500);
-    } else {
-      // All parameters collected, generate search
-      setTimeout(() => {
-        addAIMessage("Perfect! I have everything I need. Let me find the best travel options for you...");
-        setTimeout(() => {
-          const searchData: SearchData = {
-            query: `${updatedParams.destination} from ${updatedParams.origin}`,
-            destination: updatedParams.destination || 'Tokyo',
-            origin: updatedParams.origin || 'New York',
-            dates: {
-              start: updatedParams.dates?.start || '2024-12-20',
-              end: updatedParams.dates?.end || '2024-12-30'
-            },
-            budget: updatedParams.budget || 3000,
-            travelers: updatedParams.travelers || 2
-          };
-          onSearch(searchData);
-        }, 2000);
-      }, 1000);
-    }
-    
-    setCurrentInput('');
-  };
-
-  const handleSuggestionClick = (suggestion: string) => {
-    setCurrentInput(suggestion);
+    parseUserInput(input);
+    handleSubmit(e);
   };
 
   const toggleVoiceInput = () => {
     setIsListening(!isListening);
   };
 
-  const currentStep = CONVERSATION_FLOW[conversationStep];
+  const handleSuggestionClick = (suggestion: string) => {
+    handleInputChange({ target: { value: suggestion } } as any);
+  };
+
+  const quickSuggestions = [
+    'Just me', '2 people', '3-4 people', 'Family (5+)',
+    'Under $1,000', '$1,000-$3,000', '$3,000-$5,000', 'Above $5,000',
+    'This month', 'Next month', 'Summer 2025', 'I\'m flexible'
+  ];
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen px-6">
@@ -235,13 +195,13 @@ export const SearchInterface: React.FC<SearchInterfaceProps> = ({ onSearch }) =>
           {/* Messages */}
           <div className="h-96 overflow-y-auto p-6 space-y-4">
             {messages.map((message) => (
-              <div key={message.id} className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${
-                  message.type === 'user' 
+                  message.role === 'user' 
                     ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white' 
                     : 'bg-white/10 text-white border border-white/20'
                 }`}>
-                  {message.type === 'ai' && (
+                  {message.role === 'assistant' && (
                     <div className="flex items-center mb-1">
                       <Sparkles className="w-3 h-3 mr-1 text-yellow-400" />
                       <span className="text-xs text-white/60">AI Assistant</span>
@@ -252,7 +212,7 @@ export const SearchInterface: React.FC<SearchInterfaceProps> = ({ onSearch }) =>
               </div>
             ))}
             
-            {isTyping && (
+            {isLoading && (
               <div className="flex justify-start">
                 <div className="bg-white/10 text-white border border-white/20 px-4 py-2 rounded-2xl">
                   <div className="flex items-center space-x-1">
@@ -266,31 +226,29 @@ export const SearchInterface: React.FC<SearchInterfaceProps> = ({ onSearch }) =>
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Suggestions */}
-          {currentStep?.suggestions && (
-            <div className="px-6 pb-4">
-              <div className="flex flex-wrap gap-2">
-                {currentStep.suggestions.map((suggestion) => (
-                  <button
-                    key={suggestion}
-                    onClick={() => handleSuggestionClick(suggestion)}
-                    className="px-3 py-1 bg-white/5 border border-white/10 rounded-full text-white/80 hover:bg-white/10 hover:text-white transition-all duration-200 text-sm"
-                  >
-                    {suggestion}
-                  </button>
-                ))}
-              </div>
+          {/* Quick Suggestions */}
+          <div className="px-6 pb-4">
+            <div className="flex flex-wrap gap-2">
+              {quickSuggestions.slice(0, 4).map((suggestion) => (
+                <button
+                  key={suggestion}
+                  onClick={() => handleSuggestionClick(suggestion)}
+                  className="px-3 py-1 bg-white/5 border border-white/10 rounded-full text-white/80 hover:bg-white/10 hover:text-white transition-all duration-200 text-sm"
+                >
+                  {suggestion}
+                </button>
+              ))}
             </div>
-          )}
+          </div>
 
           {/* Input Form */}
-          <form onSubmit={handleSubmit} className="p-6 pt-0">
+          <form onSubmit={onSubmit} className="p-6 pt-0">
             <div className="flex items-center space-x-3">
               <div className="flex-1 relative">
                 <input
                   type="text"
-                  value={currentInput}
-                  onChange={(e) => setCurrentInput(e.target.value)}
+                  value={input}
+                  onChange={handleInputChange}
                   placeholder="Type your response..."
                   className="w-full bg-white/5 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                 />
@@ -310,7 +268,7 @@ export const SearchInterface: React.FC<SearchInterfaceProps> = ({ onSearch }) =>
               
               <button
                 type="submit"
-                disabled={!currentInput.trim()}
+                disabled={!input.trim() || isLoading}
                 className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-3 rounded-xl hover:from-blue-600 hover:to-purple-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Send className="w-5 h-5" />
